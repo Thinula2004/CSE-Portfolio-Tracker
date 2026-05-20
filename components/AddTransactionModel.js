@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
 import { getCompanies } from '../data/companyRoutes';
+import { Alert } from 'react-native';
+import { insertTransaction } from '../data/transactionRoutes';
 
 export default function AddTransactionModal({
   visible,
@@ -23,9 +25,15 @@ export default function AddTransactionModal({
     ];
     const [selectedCompany, setSelectedCompany] = useState(null);
     const [companies, setCompanies] = useState([]);
+    const [shareCount, setShareCount] = useState('');
+    const [pricePerShare, setPricePerShare] = useState('');
+    const [handlingFee, setHandlingFee] = useState('0.00');
+    const [total, setTotal] = useState('0.00');
+    const [dividendAmount, setDividendAmount] = useState('');
     useEffect(() => {
         if (visible) {
             loadCompanies();
+            clearFields();
         }
     }, [visible]);
 
@@ -39,6 +47,134 @@ export default function AddTransactionModal({
 
         setCompanies(formatted);
     };
+
+    const clearFields = () => {
+        setTransactionType('BUY');
+        setSelectedCompany(null);
+        setShareCount('');
+        setPricePerShare('');
+        setHandlingFee('0.00');
+        setTotal('0.00');
+    };
+
+    useEffect(() => {
+        calculateTotal();
+    }, [shareCount, pricePerShare, transactionType]);
+
+    const calculateTotal = () => {
+        if (
+            !shareCount ||
+            !pricePerShare ||
+            transactionType === 'DIVIDEND'
+        ) {
+            setHandlingFee('0.00');
+            setTotal('0.00');
+            return;
+        }
+
+        const shares = parseFloat(shareCount) || 0;
+        const price = parseFloat(pricePerShare) || 0;
+
+        const gross = shares * price;
+        const fee = gross * 0.0012;
+
+        let finalTotal = 0;
+
+        if (transactionType === 'BUY') {
+            finalTotal = gross + fee;
+        } else {
+            finalTotal = gross - fee;
+        }
+
+        setHandlingFee(fee.toFixed(2));
+        setTotal(finalTotal.toFixed(2));
+    };
+
+    const handleSave = () => {
+        if (!selectedCompany) {
+            Alert.alert('Validation Error', 'Please select a company');
+            return;
+        }
+
+        if (transactionType === 'DIVIDEND') {
+            if (!dividendAmount.trim()) {
+            Alert.alert(
+                'Validation Error',
+                'Please enter dividend amount'
+            );
+            return;
+            }
+
+            try {
+            const today = new Date()
+                .toISOString()
+                .split('T')[0];
+
+            insertTransaction(
+                selectedCompany,
+                'DIVIDEND',
+                null,
+                null,
+                0,
+                parseFloat(dividendAmount),
+                parseFloat(dividendAmount),
+                today
+            );
+
+            Alert.alert('Success', 'Transaction saved');
+            onClose();
+            } catch {
+            Alert.alert('Error', 'Failed to save transaction');
+            }
+
+            return;
+        }
+
+        if (!shareCount.trim()) {
+            Alert.alert(
+            'Validation Error',
+            'Please enter share count'
+            );
+            return;
+        }
+
+        if (!pricePerShare.trim()) {
+            Alert.alert(
+            'Validation Error',
+            'Please enter price per share'
+            );
+            return;
+        }
+
+        try {
+            const shares = parseFloat(shareCount);
+            const price = parseFloat(pricePerShare);
+
+            const gross = shares * price;
+
+            const today = new Date()
+            .toISOString()
+            .split('T')[0];
+
+            insertTransaction(
+            selectedCompany,
+            transactionType,
+            shares,
+            price,
+            parseFloat(handlingFee),
+            gross,
+            parseFloat(total),
+            today
+            );
+
+            Alert.alert('Success', 'Transaction saved');
+            onClose();
+
+        } catch {
+            Alert.alert('Error', 'Failed to save transaction');
+        }
+    };
+
   const renderFields = () => {
     if (transactionType === 'DIVIDEND') {
       return (
@@ -59,6 +195,9 @@ export default function AddTransactionModal({
             style={styles.input}
             placeholder="Enter dividend amount"
             keyboardType="numeric"
+            placeholderTextColor="#9c9a9a"
+            value={dividendAmount}
+            onChangeText={setDividendAmount}
           />
         </>
       );
@@ -79,29 +218,35 @@ export default function AddTransactionModal({
 
         <Text style={styles.label}>Amount of Shares</Text>
         <TextInput
-          style={styles.input}
-          placeholder="Enter share count"
-          keyboardType="numeric"
+            style={styles.input}
+            placeholder="Enter share count"
+            keyboardType="numeric"
+            value={shareCount}
+            onChangeText={setShareCount}
+            placeholderTextColor="#9c9a9a"
         />
 
         <Text style={styles.label}>Price Per Share</Text>
         <TextInput
-          style={styles.input}
-          placeholder="Enter price"
-          keyboardType="numeric"
+            style={styles.input}
+            placeholder="Enter price"
+            keyboardType="numeric"
+            value={pricePerShare}
+            onChangeText={setPricePerShare}
+            placeholderTextColor="#9c9a9a"
         />
 
         <Text style={styles.label}>Handling Fee</Text>
         <TextInput
-          style={styles.input}
-          value="0.12%"
+          style={styles.inputDisabled}
+          value='0.12%'
           editable={false}
         />
 
         <Text style={styles.label}>Total</Text>
         <TextInput
-          style={styles.input}
-          value="Auto Calculated"
+          style={styles.inputYellow}
+          value={total}
           editable={false}
         />
       </>
@@ -152,7 +297,8 @@ export default function AddTransactionModal({
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.saveBtn}
+                style={styles.saveBtn}
+                onPress={handleSave}
             >
               <Text style={styles.saveText}>
                 Save
@@ -198,7 +344,28 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     borderRadius: 10,
     padding: 14,
-    marginBottom: 10
+    marginBottom: 10,
+  },
+
+  inputDisabled:{
+    backgroundColor: '#dedede',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 10,
+  },
+
+  inputYellow: {
+    backgroundColor: '#ffbf00',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 10,
+    fontSize: 18,
+    textAlign: 'center',
+    fontWeight: '700'
   },
 
   dropdown: {
