@@ -53,6 +53,11 @@ export default function StocksScreen() {
         data={stocks}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderRow}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No Stocks found</Text>
+          </View>
+        }
       />
     </View>
   );
@@ -124,5 +129,16 @@ const styles = StyleSheet.create({
   loss: {
     color: "red",
     fontWeight: "700",
+  },
+
+  emptyContainer: {
+    marginTop: 50,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  emptyText: {
+    fontSize: 18,
+    color: "gray",
   },
 });

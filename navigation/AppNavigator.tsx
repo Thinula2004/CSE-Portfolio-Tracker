@@ -12,6 +12,7 @@ import TransactionsScreen from "../screens/TransactionsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import { TouchableOpacity } from "react-native";
 import StocksScreen from "../screens/StocksScreen";
+import MarketPricesScreen from "../screens/MarketPricesScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -43,10 +44,10 @@ function BottomTabs() {
       }}
     >
       <Tab.Screen
-        name="Charts"
-        component={DashboardScreen}
+        name="Market"
+        component={MarketPricesScreen}
         options={{
-          title: "Charts",
+          title: "Market",
           tabBarIcon: ({ color }) => (
             <Ionicons name="bar-chart-outline" size={25} color={color} />
           ),
