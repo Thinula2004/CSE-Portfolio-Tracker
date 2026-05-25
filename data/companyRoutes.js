@@ -1,3 +1,4 @@
+import Company from '../models/Company';
 import db from './database';
 
 export const insertCompany = (name, code) => {
@@ -8,8 +9,16 @@ export const insertCompany = (name, code) => {
 };
 
 export const getCompanies = () => {
-  return db.getAllSync(
+  const rows = db.getAllSync(
     'SELECT * FROM companies ORDER BY name'
+  );
+
+  return rows.map(row =>
+    new Company(
+      row.id,
+      row.name,
+      row.code
+    )
   );
 };
 
