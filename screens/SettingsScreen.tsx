@@ -53,6 +53,7 @@ const styles = StyleSheet.create({
   },
 
   resetBtn: {
+    marginTop: 30,
     borderRadius: 10,
     backgroundColor: "#ff5050",
     paddingHorizontal: 20,

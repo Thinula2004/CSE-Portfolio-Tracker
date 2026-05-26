@@ -49,7 +49,7 @@ function BottomTabs() {
         options={{
           title: "Market",
           tabBarIcon: ({ color }) => (
-            <Ionicons name="bar-chart-outline" size={25} color={color} />
+            <Ionicons name="analytics-outline" size={30} color={color} />
           ),
         }}
       />
