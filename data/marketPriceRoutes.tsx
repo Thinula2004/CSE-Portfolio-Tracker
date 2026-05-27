@@ -1,6 +1,8 @@
 import Company from "../models/Company";
 import MarketPrice from "../models/MarketPrice";
+import { getCompanies } from "./companyRoutes";
 import db from "./database";
+import { EventRegister } from "react-native-event-listeners";
 
 export const insertMarketPrice = (companyId: number, price: number): void => {
   if (price <= 0) {
@@ -63,7 +65,13 @@ export const getMarketPrices = (companyId: number) => {
       row.company_code,
     );
 
-    return new MarketPrice(row.id, company, row.price, row.updated_at);
+    const marketPrice: MarketPrice = new MarketPrice(
+      row.id,
+      company,
+      row.price,
+      row.updated_at,
+    );
+    return marketPrice;
   });
 };
 
@@ -112,5 +120,97 @@ export const demoInsert = (): void => {
   `);
 
   console.log("📊 Demo market_prices inserted:");
+  console.log(result);
+};
+
+export const updateCurrentMarketPrices = async (): Promise<void> => {
+  const companies = getCompanies();
+  const today = new Date().toISOString().split("T")[0];
+
+  for (const company of companies) {
+    try {
+      const formData = new FormData();
+      formData.append("symbol", company.code);
+
+      const response = await fetch(
+        "https://www.cse.lk/api/companyInfoSummery",
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
+
+      if (!response.ok) {
+        console.log(`❌ Failed for ${company.code}`);
+        continue;
+      }
+
+      const data = await response.json();
+
+      const symbolInfo = data?.reqSymbolInfo;
+
+      if (!symbolInfo) {
+        console.log(`❌ No symbol info for ${company.code}`);
+        continue;
+      }
+
+      const price = symbolInfo.lastTradedPrice ?? symbolInfo.previousClose;
+
+      if (!price || price <= 0) {
+        console.log(`❌ Invalid price for ${company.code}`);
+        continue;
+      }
+
+      const existing = db.getFirstSync(
+        `
+        SELECT id
+        FROM market_prices
+        WHERE company_id = ?
+          AND updated_at = ?
+        `,
+        [company.id, today],
+      );
+
+      if (existing) {
+        db.runSync(
+          `
+          UPDATE market_prices
+          SET price = ?
+          WHERE company_id = ?
+            AND updated_at = ?
+          `,
+          [price, company.id, today],
+        );
+
+        console.log(`🔄 Updated ${company.code}: ${price}`);
+      } else {
+        db.runSync(
+          `
+          INSERT INTO market_prices (
+            company_id,
+            price,
+            updated_at
+          )
+          VALUES (?, ?, ?)
+          `,
+          [company.id, price, today],
+        );
+
+        console.log(`✅ Inserted ${company.code}: ${price}`);
+      }
+    } catch (error) {
+      console.log(`❌ Error updating ${company.code}`, error);
+    }
+  }
+
+  EventRegister.emit("marketPricesUpdated");
+
+  const result = db.getAllSync(`
+    SELECT *
+    FROM market_prices
+    ORDER BY updated_at DESC
+  `);
+
+  console.log("market_prices updated:");
   console.log(result);
 };

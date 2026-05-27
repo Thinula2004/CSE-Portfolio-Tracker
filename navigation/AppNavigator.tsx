@@ -13,6 +13,7 @@ import SettingsScreen from "../screens/SettingsScreen";
 import { TouchableOpacity } from "react-native";
 import StocksScreen from "../screens/StocksScreen";
 import MarketPricesScreen from "../screens/MarketPricesScreen";
+import { updateCurrentMarketPrices } from "../data/marketPriceRoutes";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -35,6 +36,14 @@ function BottomTabs() {
             style={{ marginRight: 15 }}
           >
             <Ionicons name="settings-outline" size={25} />
+          </TouchableOpacity>
+        ),
+        headerLeft: () => (
+          <TouchableOpacity
+            onPress={() => updateCurrentMarketPrices()}
+            style={{ marginLeft: 15 }}
+          >
+            <Ionicons name="refresh-outline" size={25} />
           </TouchableOpacity>
         ),
         tabBarStyle: {

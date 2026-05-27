@@ -24,6 +24,7 @@ import {
 } from "../data/marketPriceRoutes";
 import { Ionicons } from "@expo/vector-icons";
 import MarketPrice from "../models/MarketPrice";
+import { EventRegister } from "react-native-event-listeners";
 
 export default function MarketPricesScreen() {
   const [selectedCompany, setSelectedCompany] = useState<number | null>(null);
@@ -38,6 +39,7 @@ export default function MarketPricesScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      console.log("running");
       loadCompanies();
       loadMarketPrices();
     }, []),
@@ -45,6 +47,19 @@ export default function MarketPricesScreen() {
 
   useEffect(() => {
     loadMarketPrices();
+  }, [selectedCompany]);
+
+  useEffect(() => {
+    const listener = EventRegister.addEventListener(
+      "marketPricesUpdated",
+      () => {
+        loadMarketPrices();
+      },
+    );
+
+    return () => {
+      EventRegister.removeEventListener(listener as string);
+    };
   }, [selectedCompany]);
 
   const loadMarketPrices = (): void => {
@@ -201,7 +216,7 @@ export default function MarketPricesScreen() {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
-        <View style={styles.updateCard}>
+        {/* <View style={styles.updateCard}>
           <Text style={styles.updateTitle}>Update Market Price</Text>
 
           <Dropdown
@@ -237,7 +252,7 @@ export default function MarketPricesScreen() {
               <Text style={styles.updateButtonText}>Update</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </View> */}
 
         <View style={styles.filterRow}>
           <Dropdown
@@ -246,7 +261,7 @@ export default function MarketPricesScreen() {
             valueField="value"
             value={selectedCompany}
             onChange={(item) => setSelectedCompany(item.value)}
-            style={[styles.filterDropdown, { width: "80%" }]}
+            style={[styles.filterDropdown, { width: "100%" }]}
             placeholderStyle={styles.dropdownPlaceholder}
             selectedTextStyle={styles.dropdownText}
             iconStyle={styles.dropdownIcon}
@@ -291,7 +306,7 @@ export default function MarketPricesScreen() {
             />
           )}
         </View>
-        <View style={{ flexDirection: "row" }}>
+        {/* <View style={{ flexDirection: "row" }}>
           <TouchableOpacity
             style={[
               {
@@ -326,7 +341,7 @@ export default function MarketPricesScreen() {
           >
             <Ionicons name="add-circle-outline" size={30} color="white" />
           </TouchableOpacity>
-        </View>
+        </View> */}
       </View>
     </TouchableWithoutFeedback>
   );
