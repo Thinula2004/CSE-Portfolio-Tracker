@@ -101,16 +101,16 @@ export default function TransactionsScreen() {
         <View style={styles.filterArea}>
           <View style={styles.topBottomArea}>
             <Dropdown
-              style={styles.filterDropdown}
-              placeholderStyle={styles.dropdownPlaceholder}
-              selectedTextStyle={styles.dropdownText}
-              iconStyle={styles.dropdownIcon}
               data={companies}
               labelField="label"
               valueField="value"
               value={selectedCompany}
               onChange={(item) => setSelectedCompany(item.value)}
               placeholder="Company"
+              style={styles.filterDropdown}
+              placeholderStyle={styles.dropdownPlaceholder}
+              selectedTextStyle={styles.dropdownText}
+              iconStyle={styles.dropdownIcon}
               containerStyle={styles.dropdownContainer}
               itemContainerStyle={styles.dropdownItem}
               itemTextStyle={styles.dropdownItemText}
@@ -221,21 +221,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderWidth: 1,
     borderColor: "#e5e7eb",
-
-    // ...Platform.select({
-    //   ios: {
-    //     shadowColor: "#000",
-    //     shadowOffset: {
-    //       width: 0,
-    //       height: 2,
-    //     },
-    //     shadowOpacity: 0.08,
-    //     shadowRadius: 5,
-    //   },
-    //   android: {
-    //     elevation: 3,
-    //   },
-    // }),
   },
 
   dropdownPlaceholder: {

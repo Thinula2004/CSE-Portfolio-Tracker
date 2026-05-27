@@ -13,6 +13,7 @@ export const getCompanies = () => {
     'SELECT * FROM companies ORDER BY name'
   );
 
+
   return rows.map(row =>
     new Company(
       row.id,
