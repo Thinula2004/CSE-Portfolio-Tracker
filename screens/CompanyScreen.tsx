@@ -32,14 +32,19 @@ export default function CompanyScreen() {
     setCompanies(data);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!companyName.trim() || !companyCode.trim()) {
       Alert.alert("Validation Error", "Please fill all fields");
       return;
     }
 
     try {
-      insertCompany(companyName, companyCode);
+      const success = await insertCompany(companyName, companyCode);
+
+      if (!success) {
+        Alert.alert("Error", "Company code is invalid");
+        return;
+      }
 
       Alert.alert("Success", "Company saved");
 
