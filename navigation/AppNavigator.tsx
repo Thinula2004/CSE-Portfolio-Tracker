@@ -33,7 +33,7 @@ function BottomTabs() {
         headerRight: () => (
           <TouchableOpacity
             onPress={() => navigation.navigate("Settings")}
-            style={{ marginRight: 15 }}
+            style={{ marginRight: 20 }}
           >
             <Ionicons name="settings-outline" size={25} />
           </TouchableOpacity>
@@ -41,7 +41,7 @@ function BottomTabs() {
         headerLeft: () => (
           <TouchableOpacity
             onPress={() => updateCurrentMarketPrices()}
-            style={{ marginLeft: 15 }}
+            style={{ marginLeft: 20 }}
           >
             <Ionicons name="refresh-outline" size={25} />
           </TouchableOpacity>
@@ -87,8 +87,10 @@ function BottomTabs() {
 }
 
 export type RootStackParamList = {
-  Main: undefined;
+  Home: undefined;
   Transactions: undefined;
+  Settings: undefined;
+  Stocks: undefined;
 };
 
 export default function AppNavigator() {

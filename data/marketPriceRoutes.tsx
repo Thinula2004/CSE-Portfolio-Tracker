@@ -9,7 +9,7 @@ export const insertMarketPrice = (companyId: number, price: number): void => {
     throw new Error("Price must be greater than 0");
   }
 
-  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  const today = new Date().toISOString().split("T")[0];
 
   db.runSync(
     `
@@ -99,7 +99,6 @@ export const demoInsert = (): void => {
 
     const formattedDate = date.toISOString().split("T")[0];
 
-    // simple demo fluctuation
     const price = basePrice + Math.floor(Math.random() * 40 - 20);
 
     db.runSync(
@@ -114,13 +113,6 @@ export const demoInsert = (): void => {
       [companyId, price, formattedDate],
     );
   }
-
-  const result = db.getAllSync(`
-    SELECT * FROM market_prices ORDER BY updated_at ASC
-  `);
-
-  console.log("📊 Demo market_prices inserted:");
-  console.log(result);
 };
 
 export const updateCurrentMarketPrices = async (): Promise<void> => {
@@ -204,13 +196,4 @@ export const updateCurrentMarketPrices = async (): Promise<void> => {
   }
 
   EventRegister.emit("marketPricesUpdated");
-
-  const result = db.getAllSync(`
-    SELECT *
-    FROM market_prices
-    ORDER BY updated_at DESC
-  `);
-
-  console.log("market_prices updated:");
-  console.log(result);
 };

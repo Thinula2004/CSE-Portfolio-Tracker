@@ -10,6 +10,7 @@ export default class Transaction {
     public handlingFee: number,
     public grossAmount: number,
     public netAmount: number,
+    public realizedGain: number,
     public transactionDate: string,
     public transactionTime: string,
     public notes: string | null

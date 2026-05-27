@@ -10,6 +10,7 @@ export const insertTransaction = (
   handlingFee: number | null,
   grossAmount: number,
   netAmount: number,
+  realizedGains: number,
   transactionDate: string,
   transactionTime: string,
 ) => {
@@ -26,10 +27,11 @@ export const insertTransaction = (
         handling_fee,
         gross_amount,
         net_amount,
+        realized_gain,
         transaction_date,
         transaction_time
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         companyId,
@@ -39,6 +41,7 @@ export const insertTransaction = (
         handlingFee,
         grossAmount,
         netAmount,
+        realizedGains,
         transactionDate,
         transactionTime,
       ],
@@ -61,6 +64,7 @@ type TransactionRow = {
   net_amount: number;
   transaction_date: string;
   transaction_time: string;
+  realized_gain: number;
   notes: string | null;
   company_id: number;
   company_name: string;
@@ -81,6 +85,7 @@ export const getTransactions = (
       t.handling_fee,
       t.gross_amount,
       t.net_amount,
+      t.realized_gain,
       t.transaction_date,
       t.transaction_time,
       t.notes,
@@ -134,6 +139,7 @@ export const getTransactions = (
       row.handling_fee,
       row.gross_amount,
       row.net_amount,
+      row.realized_gain,
       row.transaction_date,
       row.transaction_time,
       row.notes,

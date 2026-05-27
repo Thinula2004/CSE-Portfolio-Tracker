@@ -7,12 +7,19 @@ import {
   TextInput,
   StyleSheet,
   ScrollView,
+  Platform,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Dropdown } from "react-native-element-dropdown";
 import { getCompanies } from "../data/companyRoutes";
 import { Alert } from "react-native";
 import { insertTransaction } from "../data/transactionRoutes";
-import { getShareCount, addShares, deductShares } from "../data/sharesRoutes";
+import {
+  getShareCount,
+  addShares,
+  deductShares,
+  getAverageCostPerShare,
+} from "../data/sharesRoutes";
 
 type Props = {
   visible: boolean;
@@ -35,6 +42,7 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
   const [handlingFee, setHandlingFee] = useState("0.00");
   const [total, setTotal] = useState("0.00");
   const [dividendAmount, setDividendAmount] = useState("");
+
   useEffect(() => {
     if (visible) {
       loadCompanies();
@@ -44,12 +52,10 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
 
   const loadCompanies = () => {
     const data = getCompanies();
-
     const formatted = data.map((company) => ({
       label: `${company.name} (${company.code})`,
       value: company.id,
     }));
-
     setCompanies(formatted);
   };
 
@@ -72,21 +78,11 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
       setTotal("0.00");
       return;
     }
-
     const shares = parseFloat(shareCount) || 0;
     const price = parseFloat(pricePerShare) || 0;
-
     const gross = shares * price;
     const fee = gross * 0.0012;
-
-    let finalTotal = 0;
-
-    if (transactionType === "BUY") {
-      finalTotal = gross + fee;
-    } else {
-      finalTotal = gross - fee;
-    }
-
+    let finalTotal = transactionType === "BUY" ? gross + fee : gross - fee;
     setHandlingFee(fee.toFixed(2));
     setTotal(finalTotal.toFixed(2));
   };
@@ -96,14 +92,8 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
       "Confirm Transaction",
       `Are you sure you want to add this ${transactionType} transaction?`,
       [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Confirm",
-          onPress: () => saveTransaction(),
-        },
+        { text: "Cancel", style: "cancel" },
+        { text: "Confirm", onPress: () => saveTransaction() },
       ],
     );
   };
@@ -113,18 +103,17 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
       Alert.alert("Fields are empty", "Please select a company");
       return;
     }
+    let realizedGain = 0;
 
     if (transactionType === "DIVIDEND") {
       if (!dividendAmount.trim()) {
         Alert.alert("Fields are empty", "Please enter dividend amount");
         return;
       }
-
       try {
         const today = new Date().toISOString().split("T")[0];
         const now = new Date();
         const currentTime = now.toTimeString().split(" ")[0];
-
         insertTransaction(
           selectedCompany,
           "DIVIDEND",
@@ -133,16 +122,15 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
           0,
           parseFloat(dividendAmount),
           parseFloat(dividendAmount),
+          realizedGain,
           today,
           currentTime,
         );
-
         Alert.alert("Success", "Transaction saved");
         onClose();
       } catch {
         Alert.alert("Error", "Failed to save transaction");
       }
-
       return;
     }
 
@@ -150,14 +138,13 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
       Alert.alert("Fields are empty", "Please enter share count");
       return;
     }
-
     if (!pricePerShare.trim()) {
       Alert.alert("Fields are empty", "Please enter price per share");
       return;
     }
-
     if (transactionType == "SELL") {
-      var shareCountDB = getShareCount(selectedCompany);
+      const shareCountDB = getShareCount(selectedCompany);
+
       if (parseFloat(shareCount) > parseFloat(shareCountDB.toString())) {
         Alert.alert(
           "Not enough shares",
@@ -165,18 +152,23 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
         );
         return;
       }
+
+      const currentShare = getAverageCostPerShare(selectedCompany);
+
+      const shares = parseFloat(shareCount);
+      const netAmount = parseFloat(total);
+
+      const costBasis = currentShare * shares;
+
+      realizedGain = netAmount - costBasis;
     }
 
     try {
       const shares = parseFloat(shareCount);
       const price = parseFloat(pricePerShare);
-
       const gross = shares * price;
-
       const now = new Date();
-
       const today = now.toISOString().split("T")[0];
-
       const currentTime = now.toTimeString().split(" ")[0];
 
       insertTransaction(
@@ -187,6 +179,7 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
         parseFloat(handlingFee),
         gross,
         parseFloat(total),
+        realizedGain,
         today,
         currentTime,
       );
@@ -218,14 +211,15 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
             value={selectedCompany}
             onChange={(item) => setSelectedCompany(item.value)}
             placeholder="Select Company"
+            placeholderStyle={styles.dropdownPlaceholder}
+            selectedTextStyle={styles.dropdownSelected}
           />
-
           <Text style={styles.label}>Dividend Amount</Text>
           <TextInput
             style={styles.input}
             placeholder="Enter dividend amount"
             keyboardType="numeric"
-            placeholderTextColor="#9c9a9a"
+            placeholderTextColor="#9ca3af"
             value={dividendAmount}
             onChangeText={setDividendAmount}
           />
@@ -244,37 +238,58 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
           value={selectedCompany}
           onChange={(item) => setSelectedCompany(item.value)}
           placeholder="Select Company"
+          placeholderStyle={styles.dropdownPlaceholder}
+          selectedTextStyle={styles.dropdownSelected}
         />
 
-        <Text style={styles.label}>Amount of Shares</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter share count"
-          keyboardType="numeric"
-          value={shareCount}
-          onChangeText={setShareCount}
-          placeholderTextColor="#9c9a9a"
-        />
+        <View style={styles.row}>
+          <View style={styles.halfCol}>
+            <Text style={styles.label}>Shares</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="0"
+              keyboardType="numeric"
+              value={shareCount}
+              onChangeText={setShareCount}
+              placeholderTextColor="#9ca3af"
+            />
+          </View>
+          <View style={styles.halfCol}>
+            <Text style={styles.label}>Price per share</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Rs. 0.00"
+              keyboardType="numeric"
+              value={pricePerShare}
+              onChangeText={setPricePerShare}
+              placeholderTextColor="#9ca3af"
+            />
+          </View>
+        </View>
 
-        <Text style={styles.label}>Price Per Share</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter price"
-          keyboardType="numeric"
-          value={pricePerShare}
-          onChangeText={setPricePerShare}
-          placeholderTextColor="#9c9a9a"
-        />
-
-        <Text style={styles.label}>Handling Fee</Text>
-        <TextInput
-          style={styles.inputDisabled}
-          value="0.12%"
-          editable={false}
-        />
+        <Text style={styles.label}>Handling fee</Text>
+        <View style={styles.feeRow}>
+          <TextInput
+            style={[styles.inputDisabled, { flex: 1, marginBottom: 0 }]}
+            value="0.12% of gross"
+            editable={false}
+          />
+          <TextInput
+            style={[
+              styles.inputDisabled,
+              { flex: 1, marginBottom: 0, textAlign: "right" },
+            ]}
+            value={`Rs. ${handlingFee}`}
+            editable={false}
+          />
+        </View>
 
         <Text style={styles.label}>Total</Text>
-        <TextInput style={styles.inputYellow} value={total} editable={false} />
+        <TextInput
+          style={styles.inputYellow}
+          value={`Rs. ${total}`}
+          editable={false}
+        />
       </>
     );
   };
@@ -283,21 +298,40 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
     <Modal visible={visible} transparent={true} animationType="slide">
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
-          <Text style={styles.title}>New Transaction</Text>
+          <View style={styles.titleRow}>
+            <View>
+              <Text style={styles.titleSub}>Portfolio</Text>
+              <Text style={styles.title}>New transaction</Text>
+            </View>
+            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+              <Ionicons name="close" size={18} color="#6b7280" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Segmented control */}
+          <View style={styles.segmentRow}>
+            {transactionOptions.map((opt) => (
+              <TouchableOpacity
+                key={opt.value}
+                style={[
+                  styles.segmentBtn,
+                  transactionType === opt.value && styles.segmentBtnActive,
+                ]}
+                onPress={() => setTransactionType(opt.value)}
+              >
+                <Text
+                  style={[
+                    styles.segmentText,
+                    transactionType === opt.value && styles.segmentTextActive,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.label}>Transaction Type</Text>
-
-            <Dropdown
-              style={styles.dropdown}
-              data={transactionOptions}
-              labelField="label"
-              valueField="value"
-              value={transactionType}
-              onChange={(item) => setTransactionType(item.value)}
-              placeholder="Select Type"
-            />
-
             {renderFields()}
           </ScrollView>
 
@@ -305,9 +339,8 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
             <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
-
             <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-              <Text style={styles.saveText}>Save</Text>
+              <Text style={styles.saveText}>Save transaction</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -319,97 +352,207 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
-    padding: 20,
   },
 
   modalCard: {
+    margin: 10,
     backgroundColor: "white",
-    borderRadius: 20,
+    borderRadius: 28,
     padding: 20,
-    height: "80%",
+    paddingTop: 30,
+    paddingBottom: 25,
+    height: "73%",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: { elevation: 10 },
+    }),
   },
 
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
+  dragHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: "#e5e7eb",
+    borderRadius: 4,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 20,
   },
 
-  label: {
+  titleSub: {
+    fontSize: 11,
+    color: "#6b7280",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#111827",
+  },
+
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  segmentRow: {
+    flexDirection: "row",
+    backgroundColor: "#f3f4f6",
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 15,
+    gap: 4,
+  },
+
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+
+  segmentBtnActive: {
+    backgroundColor: "#0984e3",
+  },
+
+  segmentText: {
+    fontSize: 14,
     fontWeight: "600",
-    marginTop: 10,
-    marginBottom: 8,
+    color: "#6b7280",
+  },
+
+  segmentTextActive: {
+    color: "#ffffff",
+  },
+
+  label: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#6b7280",
+    marginTop: 12,
+    marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
   input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#e5e7eb",
+    borderRadius: 14,
     padding: 14,
-    marginBottom: 10,
+    fontSize: 15,
+    color: "#111827",
+    marginBottom: 4,
+  },
+
+  row: {
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  halfCol: {
+    flex: 1,
+  },
+
+  feeRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 4,
   },
 
   inputDisabled: {
-    backgroundColor: "#dedede",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
+    backgroundColor: "#f9fafb",
+    borderWidth: 1.5,
+    borderColor: "#e5e7eb",
+    borderRadius: 14,
     padding: 14,
-    marginBottom: 10,
+    fontSize: 14,
+    color: "#525252",
+    marginBottom: 4,
   },
 
   inputYellow: {
-    backgroundColor: "#fcd55f",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 10,
-    fontSize: 18,
+    backgroundColor: "#fffbeb",
+    borderWidth: 1.5,
+    borderColor: "#fcd34d",
+    borderRadius: 14,
+    padding: 16,
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#92400e",
     textAlign: "center",
-    fontWeight: "700",
+    marginBottom: 4,
   },
 
   dropdown: {
-    flex: 1,
-    verticalAlign: "top",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    // marginBottom: 10,
-    padding: 20,
+    borderWidth: 1.5,
+    borderColor: "#e5e7eb",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 4,
+  },
+
+  dropdownPlaceholder: {
+    color: "#9ca3af",
+    fontSize: 15,
+  },
+
+  dropdownSelected: {
+    color: "#111827",
+    fontSize: 15,
   },
 
   buttonRow: {
     flexDirection: "row",
-    marginTop: 20,
+    marginTop: 0,
+    gap: 10,
   },
 
   cancelBtn: {
     flex: 1,
-    backgroundColor: "#ddd",
-    padding: 15,
-    borderRadius: 10,
-    marginRight: 10,
+    backgroundColor: "#f3f4f6",
+    padding: 16,
+    borderRadius: 14,
     alignItems: "center",
   },
 
   saveBtn: {
-    flex: 1,
-    backgroundColor: "#1e90ff",
-    padding: 15,
-    borderRadius: 10,
+    flex: 2,
+    backgroundColor: "#0984e3",
+    padding: 16,
+    borderRadius: 14,
     alignItems: "center",
   },
 
   cancelText: {
-    fontWeight: "700",
+    fontWeight: "600",
+    color: "#6b7280",
+    fontSize: 15,
   },
 
   saveText: {
     color: "white",
     fontWeight: "700",
+    fontSize: 15,
   },
 });

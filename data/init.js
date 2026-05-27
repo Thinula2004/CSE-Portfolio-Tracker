@@ -12,17 +12,19 @@ export const initDatabase = () => {
       CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         company_id INTEGER NOT NULL,
-        type TEXT NOT NULL CHECK(type IN ('BUY','SELL','DIVIDEND')),
+        type TEXT NOT NULL
+        CHECK(type IN ('BUY','SELL','DIVIDEND')),
         share_count REAL,
         price_per_share REAL,
         handling_fee REAL NOT NULL DEFAULT 0,
         gross_amount REAL NOT NULL,
         net_amount REAL NOT NULL,
+        realized_gain REAL NOT NULL DEFAULT 0,
         transaction_date TEXT NOT NULL,
         transaction_time TEXT NOT NULL,
         notes TEXT,
 
-        FOREIGN KEY (company_id)
+        FOREIGN KEY (company_id)  
         REFERENCES companies(id)
         ON DELETE CASCADE
       );

@@ -39,7 +39,6 @@ export default function MarketPricesScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      console.log("running");
       loadCompanies();
       loadMarketPrices();
     }, []),
@@ -164,7 +163,6 @@ export default function MarketPricesScreen() {
       dates.push(d.toISOString().split("T")[0]);
     }
 
-    // map using REAL date key
     const valueMap = new Map(
       filtered.map((x) => [x.getDate().toISOString().split("T")[0], x.price]),
     );

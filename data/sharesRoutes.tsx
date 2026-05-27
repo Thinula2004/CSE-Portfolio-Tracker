@@ -287,3 +287,16 @@ export const getShares = () => {
     );
   });
 };
+
+export const getAverageCostPerShare = (companyId: number): number => {
+  const row = db.getFirstSync(
+    `
+    SELECT average_cost_per_share
+    FROM shares
+    WHERE company_id = ?
+    `,
+    [companyId],
+  ) as { average_cost_per_share: number } | null;
+
+  return row ? row.average_cost_per_share : 0;
+};
